@@ -114,7 +114,7 @@ protected:
         fflush(stdout);
         flann::load_from_file(data, "cloud.h5","dataset");
         flann::load_from_file(query,"cloud.h5","query");
-        flann::load_from_file(match,"cloud.h5","indices");
+		flann::load_from_file(match,"cloud.h5","match");
 
         dists = flann::Matrix<float>(new float[query.rows*5], query.rows, 5);
         indices = flann::Matrix<int>(new int[query.rows*5], query.rows, 5);
@@ -151,7 +151,7 @@ TEST_F(Flann_3D, KDTreeSingleTest)
 
 TEST_F(Flann_3D, KDTreeCudaTest)
 {
-    flann::Index<L2_Simple<float> > index(data, flann::KDTreeCuda3dIndexParams());
+	flann::KDTreeCuda3dIndex<L2_Simple<float> > index(data, flann::KDTreeCuda3dIndexParams());
     start_timer("Building kd-tree index...");
     index.buildIndex();
     printf("done (%g seconds)\n", stop_timer());
@@ -165,6 +165,65 @@ TEST_F(Flann_3D, KDTreeCudaTest)
     printf("Precision: %g\n", precision);
 }
 
+
+TEST_F(Flann_3D, TestRadiusSearch)
+{
+    flann::KDTreeCuda3dIndex<L2_Simple<float> > index(data, flann::KDTreeCuda3dIndexParams());
+    start_timer("Building kd-tree index...");
+    index.buildIndex();
+    printf("done (%g seconds)\n", stop_timer());
+	float r = 0.02;
+	std::vector< std::vector<int> > indices;
+	std::vector< std::vector<float> > dists;
+	start_timer("Radius search, r=0.02...");
+	index.radiusSearch( query, indices,dists, r*r, flann::SearchParams() );
+	printf("done (%g seconds)\n", stop_timer());
+	
+	start_timer("verifying results...");
+	for( int i=0; i<query.rows; i++ )
+	{
+		for( int j=0; j<data.rows; j++ )
+		{
+			float dist = 0;
+			for( int k=0; k<3; k++ )
+				dist += (query[i][k]-data[j][k])*(query[i][k]-data[j][k]);
+			if( dist < r*r )
+			{
+				EXPECT_TRUE( std::find( indices[i].begin(), indices[i].end(), j )!=indices[i].end() );
+			}
+			else
+			{
+				EXPECT_TRUE( std::find( indices[i].begin(), indices[i].end(), j )==indices[i].end() );
+			}
+		}
+	}
+	printf("done (%g seconds)\n", stop_timer());
+	
+	r=0.01;
+	start_timer("Radius search, r=0.01");
+	index.radiusSearch( query, indices,dists, r*r, flann::SearchParams() );
+	printf("done (%g seconds)\n", stop_timer());
+	
+	start_timer("verifying results...");
+	for( int i=0; i<query.rows; i++ )
+	{
+		for( int j=0; j<data.rows; j++ )
+		{
+			float dist = 0;
+			for( int k=0; k<3; k++ )
+				dist += (query[i][k]-data[j][k])*(query[i][k]-data[j][k]);
+			if( dist < r*r )
+			{
+				EXPECT_TRUE( std::find( indices[i].begin(), indices[i].end(), j )!=indices[i].end() );
+			}
+			else
+			{
+				EXPECT_TRUE( std::find( indices[i].begin(), indices[i].end(), j )==indices[i].end() );
+			}
+		}
+	}
+	printf("done (%g seconds)\n", stop_timer());
+}
 
 class Flann_3D_Random_Cloud : public FLANNTestFixture {
 protected:
@@ -237,7 +296,7 @@ protected:
 
 TEST_F(Flann_3D_Random_Cloud, Test1NN)
 {
-    flann::Index<L2_Simple<float> > index(data, flann::KDTreeCuda3dIndexParams());
+    flann::KDTreeCuda3dIndex<L2_Simple<float> > index(data, flann::KDTreeCuda3dIndexParams());
     start_timer("Building kd-tree index...");
     index.buildIndex();
     printf("done (%g seconds)\n", stop_timer());
@@ -257,7 +316,7 @@ TEST_F(Flann_3D_Random_Cloud, Test1NN)
 
 TEST_F(Flann_3D_Random_Cloud, Test4NN)
 {
-    flann::Index<L2_Simple<float> > index(data, flann::KDTreeCuda3dIndexParams());
+    flann::KDTreeCuda3dIndex<L2_Simple<float> > index(data, flann::KDTreeCuda3dIndexParams());
     start_timer("Building kd-tree index...");
     index.buildIndex();
     printf("done (%g seconds)\n", stop_timer());
@@ -295,7 +354,7 @@ TEST_F(Flann_3D_Random_Cloud, Test4NNGpuBuffers)
 	
 	flann::KDTreeCuda3dIndexParams index_params;
 	index_params["input_is_gpu_float4"]=true;
-	flann::Index<L2_Simple<float> > index(data_device_matrix, index_params);
+	flann::KDTreeCuda3dIndex<L2_Simple<float> > index(data_device_matrix, index_params);
     start_timer("Building kd-tree index...");
     index.buildIndex();
     printf("done (%g seconds)\n", stop_timer());
@@ -330,7 +389,7 @@ TEST_F(Flann_3D_Random_Cloud, Test4NNGpuBuffers)
 
 TEST_F(Flann_3D_Random_Cloud, TestRadiusSearchVector)
 {
-    flann::Index<L2_Simple<float> > index(data, flann::KDTreeCuda3dIndexParams());
+    flann::KDTreeCuda3dIndex<L2_Simple<float> > index(data, flann::KDTreeCuda3dIndexParams());
     start_timer("Building kd-tree index...");
     index.buildIndex();
     printf("done (%g seconds)\n", stop_timer());
@@ -392,7 +451,7 @@ TEST_F(Flann_3D_Random_Cloud, TestRadiusSearchVector)
 
 TEST_F(Flann_3D_Random_Cloud, TestRadiusSearchMatrix)
 {
-    flann::Index<L2_Simple<float> > index(data, flann::KDTreeCuda3dIndexParams());
+    flann::KDTreeCuda3dIndex<L2_Simple<float> > index(data, flann::KDTreeCuda3dIndexParams());
     start_timer("Building kd-tree index...");
     index.buildIndex();
     printf("done (%g seconds)\n", stop_timer());
@@ -443,65 +502,6 @@ TEST_F(Flann_3D_Random_Cloud, TestRadiusSearchMatrix)
 	delete []counts.ptr();
 	delete []indices.ptr();
 	delete []dists.ptr();
-}
-
-TEST_F(Flann_3D, TestRadiusSearch)
-{
-    flann::Index<L2_Simple<float> > index(data, flann::KDTreeCuda3dIndexParams());
-    start_timer("Building kd-tree index...");
-    index.buildIndex();
-    printf("done (%g seconds)\n", stop_timer());
-	float r = 0.02;
-	std::vector< std::vector<int> > indices;
-	std::vector< std::vector<float> > dists;
-	start_timer("Radius search, r=0.02...");
-	index.radiusSearch( query, indices,dists, r*r, flann::SearchParams() );
-	printf("done (%g seconds)\n", stop_timer());
-	
-	start_timer("verifying results...");
-	for( int i=0; i<query.rows; i++ )
-	{
-		for( int j=0; j<data.rows; j++ )
-		{
-			float dist = 0;
-			for( int k=0; k<3; k++ )
-				dist += (query[i][k]-data[j][k])*(query[i][k]-data[j][k]);
-			if( dist < r*r )
-			{
-				EXPECT_TRUE( std::find( indices[i].begin(), indices[i].end(), j )!=indices[i].end() );
-			}
-			else
-			{
-				EXPECT_TRUE( std::find( indices[i].begin(), indices[i].end(), j )==indices[i].end() );
-			}
-		}
-	}
-	printf("done (%g seconds)\n", stop_timer());
-	
-	r=0.01;
-	start_timer("Radius search, r=0.01");
-	index.radiusSearch( query, indices,dists, r*r, flann::SearchParams() );
-	printf("done (%g seconds)\n", stop_timer());
-	
-	start_timer("verifying results...");
-	for( int i=0; i<query.rows; i++ )
-	{
-		for( int j=0; j<data.rows; j++ )
-		{
-			float dist = 0;
-			for( int k=0; k<3; k++ )
-				dist += (query[i][k]-data[j][k])*(query[i][k]-data[j][k]);
-			if( dist < r*r )
-			{
-				EXPECT_TRUE( std::find( indices[i].begin(), indices[i].end(), j )!=indices[i].end() );
-			}
-			else
-			{
-				EXPECT_TRUE( std::find( indices[i].begin(), indices[i].end(), j )==indices[i].end() );
-			}
-		}
-	}
-	printf("done (%g seconds)\n", stop_timer());
 }
 
 int main(int argc, char** argv)
